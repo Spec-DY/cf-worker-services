@@ -16,17 +16,21 @@ type WeatherApiResponse = {
   windspeed_kph: Number;
 };
 
-export const runtime = "edge";
+// edge mode is not support by cloudflare yet
+// export const runtime = "edge";
 
 export default function Page({
   params,
 }: {
   params: Promise<{ location: string }>;
 }) {
+  // the Button lead to here, get location from param
   const { location } = use(params);
 
   const [weatherData, setWeatherData] = useState<Weather | null>(null);
 
+  // start fetch api folder route
+  // and after route.ts runs, we get weather data
   useEffect(() => {
     fetch(`/api/weather?country=${location}`)
       .then((response) => response.json<WeatherApiResponse>())

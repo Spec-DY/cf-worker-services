@@ -1,6 +1,7 @@
 import getExternalWeatherData from "@/lib/get_external_weather_data";
 
-export const runtime = "edge";
+// edge mode is not support by cloudflare yet
+// export const runtime = "edge";
 
 const countries = [
   {
@@ -35,7 +36,11 @@ const countries = [
   },
 ];
 
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+
 export async function GET(request: Request) {
+  const cache = getCloudflareContext().env.WEATHER_CACHE;
+
   const request_url = new URL(request.url);
   const requested_country = request_url.searchParams.get("country");
   const country_config = countries.find((c) => c.country == requested_country);
@@ -44,10 +49,28 @@ export async function GET(request: Request) {
     return new Response("Not found", { status: 404 });
   }
 
-  let weather_data = await getExternalWeatherData(
-    country_config.lat,
-    country_config.long
-  );
+  const cached_data = await cache.get(`location:${requested_country}`);
+
+  let weather_data;
+
+  if (!cached_data) {
+    console.log("No cached data found");
+
+    weather_data = await getExternalWeatherData(
+      country_config.lat,
+      country_config.long
+    );
+
+    // put weather data as value, location:country as key
+    await cache.put(
+      `location:${requested_country}`,
+      JSON.stringify(weather_data),
+      { expirationTtl: 3600 } // expire after 1 hour
+    );
+  } else {
+    console.log("cached data found");
+    weather_data = JSON.parse(cached_data);
+  }
 
   const response = {
     temperature_celsius: weather_data.temperature_celsius,

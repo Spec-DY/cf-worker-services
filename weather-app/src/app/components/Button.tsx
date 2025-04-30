@@ -8,11 +8,13 @@ export default function Button() {
   }
 
   const handleClick = () => {
+    // get location from element id
     let location = document.getElementById(
       "location-select"
     ) as unknown as HTMLSelectElement;
 
-    router.push(`/api/weather/${location.value}`);
+    // go to this url with location when button clicked
+    router.push(`/weather/${location.value}`);
   };
   return (
     <a href="#" type="button" className="no-underline" onClick={handleClick}>
