@@ -6,7 +6,7 @@ type ImageListProps = {
 
 export const ImageList = ({ images }: ImageListProps) => {
   return (
-    <div className="flex justify-center items-center h-full">
+    <div className="flex justify-center items-center">
       <div className="w-full flex justify-center gap-4 pt-4">
         {Object.values(images).map((image, index) => {
           return (

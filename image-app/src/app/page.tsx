@@ -4,7 +4,24 @@ import React from "react";
 import { ChangeEvent } from "react";
 import { ImageList } from "@/components/ImageList";
 
+// add types for the images
+type UserImage = {
+  url: string;
+  filename: string;
+  permanentUrl?: string;
+};
+
+interface ApiResponse {
+  success: boolean;
+  images: { url: string; filename: string }[];
+}
+
 export default function Home() {
+  const [uploadedImages, setUploadedImages] = React.useState<Array<UserImage>>(
+    []
+  );
+  const [isUploading, setIsUploading] = React.useState(false);
+
   const handleChange = (event: ChangeEvent) => {
     const local_files = (event.target as HTMLInputElement).files;
     let localUploadedImages: Array<UserImage> = [];
@@ -13,87 +30,109 @@ export default function Home() {
       return;
     }
 
+    setIsUploading(true);
     let formData = new FormData();
 
     for (let x = 0; x < local_files.length; x++) {
-      // append each picture to formData
-      // which will post to R2 later
       formData.append("files", local_files[x]);
 
-      // the formData will look like:
-      // FormData {
-      //   "files": [
-      //     File {
-      //       name: "cat.jpg",
-      //       type: "image/jpeg",
-      //       size: 1234567,
-      //       lastModified: 1618412345678
-      //     },
-      //     File {
-      //       name: "dog.png",
-      //       type: "image/png",
-      //       size: 2345678,
-      //       lastModified: 1618412345679
-      //     }
-      //   ]
-      // }
-
-      // and also save it to localUploadedImages
-      // so it will be displayed after post to R2
       localUploadedImages.push({
         url: URL.createObjectURL(local_files[x]),
         filename: local_files[x].name,
       });
     }
 
-    const headers = {
-      "content-type": "multipart/form-data",
-    };
-
-    fetch("/api/files", { body: formData, method: "post" }).then((response) => {
-      if (response.ok) {
-        setUploadedImages(localUploadedImages);
-      } else {
-        // handle an error
-      }
-    });
+    fetch("/api/files", { body: formData, method: "post" })
+      .then((response) => response.json())
+      .then((data) => {
+        if ((data as ApiResponse).success) {
+          // use the localUploadedImages to set the state
+          // and add the permanent URL to each image
+          const images = localUploadedImages.map((img, i) => ({
+            ...img,
+            permanentUrl: (data as ApiResponse).images[i].url,
+          }));
+          setUploadedImages(images);
+        }
+      })
+      .finally(() => {
+        setIsUploading(false);
+      });
   };
 
-  const [uploadedImages, setUploadedImages] = React.useState(new Array());
+  // copy the permanent URL to clipboard
+  const copyUrl = (url: string) => {
+    navigator.clipboard.writeText(url).then(() => alert("URL Copied!"));
+  };
 
   return (
     <section className="h-screen">
       <div className="container py-5 h-full mx-auto">
-        <div className="flex justify-center items-center h-full">
-          <div className="w-full md:w-2/3 lg:w-1/2 xl:w-1/3 px-4">
-            <h3 className="mb-4 pb-2 font-normal text-center">
-              AI Image Analyzer
-            </h3>
+        <div className="flex flex-col justify-center items-center h-full">
+          <h1 className="mb-4 font-bold text-3xl items-center w-auto">
+            Image Host
+          </h1>
+          <a
+            href="/uploadedimages"
+            className="border-2 border-blue-500 p-2 rounded-2xl shadow-md cursor-pointer hover:bg-blue-800 bg-blue-500 text-white transition-colors"
+          >
+            Uploaded Images
+          </a>
+          <div className="w-full md:w-2/3 lg:w-1/2 xl:w-1/3 px-4 mt-6 flex flex-col items-center">
+            {/* {uploadedImages.length === 0 && ( */}
+            <>
+              <label
+                htmlFor="upload-image"
+                className="w-full p-2 border rounded-xl cursor-pointer bg-gray-200 hover:bg-gray-200 shadow-md"
+              >
+                Upload images and get permanent URLs
+              </label>
+              <input
+                id="upload-image"
+                className="w-0 h-0"
+                aria-label="Images"
+                type="file"
+                multiple
+                onChange={handleChange}
+                disabled={isUploading}
+              />
 
-            {uploadedImages.length === 0 && (
-              <>
-                <p>
-                  Select a number of images and upload them to have them
-                  analyzed.
-                </p>
-
-                <div className="rounded mb-3">
-                  <input
-                    className="w-full p-2 border rounded"
-                    aria-label="Images"
-                    type="file"
-                    multiple
-                    onChange={handleChange}
-                  />
-                </div>
-              </>
-            )}
+              {isUploading && <p className="text-center">Uploading...</p>}
+            </>
+            {/* )} */}
 
             {uploadedImages.length > 0 && (
               <>
                 <p className="text-center">Files uploaded successfully.</p>
 
                 <ImageList images={uploadedImages} />
+
+                {/* display URL */}
+                <div className=" border rounded p-4 mt-6">
+                  <h4 className="font-medium mb-2">URL:</h4>
+                  {uploadedImages.map((image, index) => (
+                    <div key={index} className="mb-2 flex items-center">
+                      <div className="truncate flex-1">
+                        {image.permanentUrl}
+                      </div>
+                      <button
+                        onClick={() => copyUrl(image.permanentUrl || "")}
+                        className="ml-2 bg-blue-500 text-white px-2 py-1 rounded-md text-sm shadow-md transition-colors hover:bg-blue-800"
+                      >
+                        copy
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4 text-center">
+                  <button
+                    onClick={() => setUploadedImages([])}
+                    className="bg-blue-500 px-4 py-2 rounded-xl text-white shadow-md hover:bg-blue-800 transition-colors"
+                  >
+                    Back
+                  </button>
+                </div>
               </>
             )}
           </div>

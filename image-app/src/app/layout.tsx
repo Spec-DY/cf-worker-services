@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Image Analyzer",
-  description: "Analyze any image.",
+  title: "Image Host",
+  description: "Host any image.",
 };
 
 export default function RootLayout({
